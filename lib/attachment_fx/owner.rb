@@ -1,4 +1,6 @@
 
+require 'active_support/core_ext/module/attribute_accessors'
+
 module AttachmentFx
   
   #
@@ -31,6 +33,9 @@ module AttachmentFx
       end
     end
 
+    @@nil_path = nil.to_s
+    mattr_accessor :nil_path
+
     protected
 
       def attachment?(name)
@@ -39,11 +44,11 @@ module AttachmentFx
       end
 
       def attachment_path(name, thumb)
-        self.send(name).public_filename(thumb)
+        attachment?(name) ? self.send(name).public_filename(thumb) : nil_path
       end
 
       def attachment_full_path(name, thumb)
-        self.send(name).full_filename(thumb)
+        attachment?(name) ? self.send(name).full_filename(thumb) : nil_path
       end
 
     private
@@ -140,6 +145,8 @@ module AttachmentFx
       end
 
       def attachment_path(name, thumb)
+        return nil_path unless attachment?(name)
+
         if respond_to? cache_attr_name = attachment_path_cache_attr_name
           path_cache = send cache_attr_name
           path_cache = {} unless path_cache
@@ -164,6 +171,8 @@ module AttachmentFx
       end
 
       def attachment_full_path(name, thumb)
+        return nil_path unless attachment?(name)
+        
         File.expand_path(attachment_path(name, thumb), AttachmentFx::PUBLIC_PATH)
       end
 

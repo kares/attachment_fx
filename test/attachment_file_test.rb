@@ -406,9 +406,26 @@ class AttachmentFileTest < ActiveSupport::TestCase
     assert_nil ValidatedImageOwner.find(image_owner.id).image # TODO should this be changed !?
   end
 
+  test 'returns nil_path on missing attachment path' do
+    image_owner = ImageOwner.create!
+
+    nil_path = AttachmentFx::Owner.nil_path
+    assert_equal nil_path, image_owner.image_path
+    assert_equal nil_path, image_owner.image_full_path
+
+    begin
+      AttachmentFx::Owner.nil_path = '00'
+      assert_equal '00', image_owner.image_path
+      assert_equal '00', image_owner.image_full_path
+    ensure
+      AttachmentFx::Owner.nil_path = nil_path
+    end
+
+  end
+
   #
 
-  def test_validates_as_attachment_and_reports_errors_on
+  test 'validates_as_attachment_and_reports_errors_on' do
     file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.pdf'
     image = ValidatedImage.new(:uploaded_data => file_data)
 
@@ -417,7 +434,7 @@ class AttachmentFileTest < ActiveSupport::TestCase
     assert image.errors.on(:uploaded_data)
   end
 
-  def test_validates_as_attachment_and_reports_errors_on_throught_owner # owner valid
+  test 'validates_as_attachment_and_reports_errors_on_throught_owner' do # owner valid
     file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.pdf'
     image_owner = ValidatedImageOwner.new(:image => { :uploaded_data => file_data })
 

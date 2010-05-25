@@ -72,11 +72,11 @@ module AttachmentFx
         end
 
         def #{association_id}_path(thumb = nil)
-          has_#{association_id}? ? attachment_path(:'#{association_id}', thumb) : ''
+          attachment_path(:'#{association_id}', thumb)
         end
 
         def #{association_id}_full_path(thumb = nil)
-          has_#{association_id}? ? attachment_full_path(:'#{association_id}', thumb) : ''
+          attachment_full_path(:'#{association_id}', thumb)
         end
       }, __FILE__, __LINE__)
 

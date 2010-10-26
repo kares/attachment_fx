@@ -1,3 +1,3 @@
 [submodule "test/attachment_fu"]
 	path = test/attachment_fu
-	url = git://github.com/technoweenie/attachment_fu.git
+	url = git://github.com/kares/attachment_fu.git

@@ -15,22 +15,27 @@
 #  db_file_id   :integer(4)
 #
 
-require 'attachment_fx/db_file_helpers'
-
 module AttachmentFx
-  # Helper model class, this represents an attachment metadata stored in the DB
+  
+  # Helper model class, this represents an attachment meta-data stored in the DB
   # (e.g. icons). The class attributes follows the 'attachment_fu' conventions.
   module AttachmentFile
 
     def self.included(base)
-      touch = false # base.attachment_options[:touch] TODO true !
-      polymorphic = true # base.attachment_options[:polymorphic] TODO false !
-      base.belongs_to :owner, :polymorphic => polymorphic, # allow anybody to reference a file
-                              :touch => touch # should behave just like owner's attribute
+      options = base.attachment_options[:owner] || {}
+      # :storage => :db_file,
+      # :path_prefix => "public/attachment_files",
+      # :thumbnail_class => AttachmentFile
+      # :owner => { :touch => true, :polymorphic => true }
+      options[:touch] = false unless options.has_key?(:touch)
+      options[:polymorphic] = true unless options.has_key?(:polymorphic)
+      
+      base.belongs_to :owner, options
+
       ##
       update_cache_callback = Proc.new do |attachment|
 
-        owner = if attachment.respond_to? :proxy_owner
+        owner = if attachment.respond_to?(:proxy_owner)
           attachment.proxy_owner
         elsif attachment.owner
           attachment.owner # won't respond_to?
@@ -39,7 +44,7 @@ module AttachmentFx
         end
 
         # unwrap ActiveRecord::Associations::BelongsToPolymorphicAssociation :
-        owner = owner.proxy_target if owner.respond_to? :proxy_target
+        owner = owner.proxy_target if owner.respond_to?(:proxy_target)
 
         update_method = :update_attachment_path_cache
         if owner.respond_to?(update_method)
@@ -85,9 +90,9 @@ module AttachmentFx
 
     def save(perform_validation = true)
       # need to fix attachment file saving, if called with
-      # save(false) it does not get saved correctly e.g. thumbnails
+      # save(false) it does not get saved correctly e.g. thumb-nails
       # are not generated as some processing is hooked as
-      # validation callbacks ... thus fix this behavior :
+      # validation call-backs ... thus fix this behavior :
       unless perform_validation
         self.valid?
         self.errors.clear
@@ -95,7 +100,7 @@ module AttachmentFx
       super
     end
 
-    # overriden to have a custom message for "invalid" content type e.g. image validation
+    # override to have a custom message for "invalid" content type e.g. image validation
     # for error message translations @see ActiveRecord::Error::generate_message
     def attachment_attributes_valid?
       report_errors_on = self.class.read_inheritable_attribute(:report_errors_on)
@@ -167,16 +172,15 @@ module AttachmentFx
 
     module ClassMethods
 
-    #class << self
-
       # an extended version of has_attachment :
       # - adds "filename" support for :db_file storage
       def has_attachment(options = {}) # TODO refactor too many has_attachment overrides !
-        # if overriden include what's already here
+        # if 'overriden' include what's already here
         super(attachment_options.merge(options))
         if attachment_options[:storage] == :db_file
-          module_name = AttachmentFx::DbFileHelpers
-          send :include, module_name unless included_modules.include? module_name
+          require 'attachment_fx/db_file_helpers'
+          mod_name = AttachmentFx::DbFileHelpers
+          send :include, mod_name unless included_modules.include?(mod_name)
         end
       end
 
@@ -191,8 +195,6 @@ module AttachmentFx
         # validate              :attachment_attributes_valid?
       end
 
-    #end
-
       def new_from_file(file)
         self.new :uploaded_data => file_as_uploaded_data(file)
       end
@@ -200,7 +202,6 @@ module AttachmentFx
       delegate :file_as_uploaded_data,
                :build_attachment,
                :create_attachment,
-               :content_type_for, # TODO really ?
                :to => AttachmentFile
       
     end

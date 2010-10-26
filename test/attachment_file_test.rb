@@ -1,4 +1,4 @@
-require 'test_helper'
+require File.expand_path('test_helper', File.dirname(__FILE__))
 
 class AttachmentFileTest < ActiveSupport::TestCase
 
@@ -306,7 +306,7 @@ class AttachmentFileTest < ActiveSupport::TestCase
     assert_not_nil image_owner.image.id
   end
 
-  test 'attachment gets updated with owner on update' do
+  test 'attachment gets updated with owner on update (and old attachment is destroyed)' do
     file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
     image_owner = ImageOwner.create!(:image => { :uploaded_data => file_data }).reload
     assert_not_nil image_owner.image
@@ -359,52 +359,88 @@ class AttachmentFileTest < ActiveSupport::TestCase
   end
 
   test 'attachment does not get saved with owner on update if is not valid (too big)' do
-    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
-    image_owner = ValidatedImageOwner.create!(:image => { :uploaded_data => file_data }).reload
+    image_owner = ValidatedImageOwner.create!
+    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.png'
+    assert ! image_owner.update_attributes(:name => 'mehehehe', :image => { :uploaded_data => file_data })
+
+    assert image_owner.valid? # the image was invalid not the owner !
+    assert_equal 'mehehehe', image_owner.name
     assert_not_nil image_owner.image
-    assert ValidatedImage.exists?(image_id = image_owner.image.id)
+    assert_not_blank image_owner.image.errors
+    assert_not_blank image_owner.image.errors.on(:uploaded_data)
+    image_owner.reload
+    assert_nil image_owner.image
+  end
+
+  test 'previous attachment is kept if saving new attachment fails due to validation errors' do
+    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
+    image_owner = ValidatedImageOwner.create!(:image => { :uploaded_data => file_data })
+    image_id = image_owner.image.id
+    #assert ValidatedImage.exists?(image_id)
 
     file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.png'
     assert ! image_owner.update_attributes(:name => 'mehehehe', :image => { :uploaded_data => file_data })
 
     assert image_owner.valid? # the image was invalid not the owner !
-    assert_not_nil image_owner.image
-    assert_not_blank image_owner.image.errors
-    assert_not_blank image_owner.image.errors.on(:uploaded_data)
-    image_owner = image_owner.reload
-    assert_nil image_owner.image
-    assert ! Image.exists?(image_id)
-  end
-
-  test 'attachment gets updated with owner on update but does not persist if invalid' do
-    #puts '1 ==============================='
-    #Image.all.each { |img| puts img.inspect }
-    #puts '================================='
-    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
-    image_owner = ValidatedImageOwner.create!(:image => { :uploaded_data => file_data }).reload
-    #puts '2 ==============================='
-    #Image.all.each { |img| puts img.inspect }
-    #puts '================================='
-    #image_owner = ImageOwner.find(image_owner.id)
-
-    assert_not_nil image_owner.image
-    assert ValidatedImage.exists?(image_id = image_owner.image.id)
-
-    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.pdf'
-    assert ! image_owner.update_attributes(:name => 'jupiii', :image => { :uploaded_data => file_data })
-    #puts '3 ==============================='
-    #Image.all.each { |img| puts img.inspect }
-    #puts '================================='
-
-    assert_equal 'jupiii', image_owner.name
+    assert_equal 'mehehehe', image_owner.name
     assert_not_nil image_owner.image
     assert_nil image_owner.image.id
-    # actually it does remove the previous attachment (re-submit of attachment expected) :
-    #puts '4 ==============================='
-    #Image.all.each { |img| puts img.inspect }
-    #puts '================================='
-    assert_nil ValidatedImageOwner.find(image_owner.id).image # TODO should this be changed !?
+    assert_not_blank image_owner.image.errors
+    assert_not_blank image_owner.image.errors.on(:uploaded_data)
+    image_owner.reload
+    assert_not_nil image_owner.image
+    assert_equal image_id, image_owner.image.id
+    assert ValidatedImage.exists?(image_id)
   end
+
+  test 'previous attachment is destroyed if saving a new valid attachment' do
+    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
+    image_owner = ValidatedImageOwner.create!(:image => { :uploaded_data => file_data })
+    image_id = image_owner.image.id
+    assert ValidatedImage.exists?(image_id)
+
+    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
+    assert image_owner.update_attributes(:name => 'mehehehe', :image => { :uploaded_data => file_data })
+
+    assert_equal 'mehehehe', image_owner.name
+    assert_not_nil image_owner.image
+    assert_not_nil image_owner.image.id
+    assert_blank image_owner.image.errors
+    image_owner.reload
+    assert_not_nil image_owner.image
+    assert_not_equal image_id, image_owner.image.id
+    assert ! ValidatedImage.exists?(image_id)
+  end
+
+#  test 'attachment gets updated with owner on update but does not persist if invalid' do
+#    #puts '1 ==============================='
+#    #Image.all.each { |img| puts img.inspect }
+#    #puts '================================='
+#    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
+#    image_owner = ValidatedImageOwner.create!(:image => { :uploaded_data => file_data }).reload
+#    #puts '2 ==============================='
+#    #Image.all.each { |img| puts img.inspect }
+#    #puts '================================='
+#    #image_owner = ImageOwner.find(image_owner.id)
+#
+#    assert_not_nil image_owner.image
+#    assert ValidatedImage.exists?(image_id = image_owner.image.id)
+#
+#    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.pdf'
+#    assert ! image_owner.update_attributes(:name => 'jupiii', :image => { :uploaded_data => file_data })
+#    #puts '3 ==============================='
+#    #Image.all.each { |img| puts img.inspect }
+#    #puts '================================='
+#
+#    assert_equal 'jupiii', image_owner.name
+#    assert_not_nil image_owner.image
+#    assert_nil image_owner.image.id
+#    # actually it does remove the previous attachment (re-submit of attachment expected) :
+#    #puts '4 ==============================='
+#    #Image.all.each { |img| puts img.inspect }
+#    #puts '================================='
+#    assert_nil ValidatedImageOwner.find(image_owner.id).image # TODO should this be changed !?
+#  end
 
   test 'returns nil_path on missing attachment path' do
     image_owner = ImageOwner.create!

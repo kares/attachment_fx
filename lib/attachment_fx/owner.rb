@@ -5,6 +5,7 @@ module AttachmentFx
   
   #
   # will get included into the attachment file "owner"
+  # 
   # each and every attachment file belongs_to an owner
   #
   module Owner
@@ -27,7 +28,7 @@ module AttachmentFx
         # won't get saved until all attachments are valid :
         invalid_attachments.blank? && super
       else
-        # if updating an owner it's ok to update owner attributes
+        # if updating an owner it's OK to update owner attributes
         # but should report false if any attachment is invalid :
         super && invalid_attachments.blank?
       end
@@ -115,7 +116,7 @@ module AttachmentFx
           base.send :serialize, attr_name.to_sym
         else
           RAILS_DEFAULT_LOGGER.info "consider adding a '#{attr_name}' column for " +
-                                    "#{self} to cache attachment '*_path' methods"
+                                    "#{base} to cache attachment '*_path' methods"
         end
       end
 
@@ -162,7 +163,7 @@ module AttachmentFx
           thumb_s = thumb.to_s # nil.to_s == ''
           return name_cache[thumb_s] if name_cache[thumb_s]
 
-          returning super do |path|
+          super.tap do |path|
             name_cache[thumb_s] = path
             update_attachment_path_cache_attribute(path_cache)
           end
@@ -196,7 +197,7 @@ module AttachmentFx
                 end
                 if thumb = instance[:thumbnail] # it's a thumbnail
                   name_cache[thumb.to_s] = instance.public_filename
-                else # it's the parrent (might have thumbnails) :
+                else # it's the parent (might have thumb-nails) :
                   name_cache[''] = instance.public_filename
                   instance.thumbnails.each do |attachment_thumb|
                     thumb = attachment_thumb[:thumbnail].to_s # thumbnail name
@@ -232,9 +233,15 @@ module AttachmentFx
 
         def update_attachment_path_cache_attribute(path_cache)
           cache_attr_name = attachment_path_cache_attr_name
-          #update_attribute(cache_attr_name, path_cache)
+          # update_attribute(cache_attr_name, path_cache)
           send("#{cache_attr_name}=", path_cache)
-          save(false) unless readonly?
+          if readonly?
+            logger = respond_to?(:logger) ? self.logger : RAILS_DEFAULT_LOGGER
+            logger.warn "update_attachment_path_cache_attribute() not updating " +
+                        "attachment path cache as #{self.inspect} is readonly !" if logger
+          else
+            save(false)
+          end
         end
 
     end

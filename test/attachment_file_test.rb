@@ -28,8 +28,8 @@ class AttachmentFileTest < ActiveSupport::TestCase
     has_attachment :storage => :db_file,
                    :content_type => :image,
                    :path_prefix => TEST_IMAGE_PATH_PREFIX,
-                   :resize_to => '192x192>', # resize to no wider than 192px
-                   :thumbnail_class => self, # store thumbnails with parent
+                   :resize_to => '192x192>', # not wider than 192 pixels
+                   :thumbnail_class => self, # store thumb-nails with parent
                    :thumbnails => { :half => '96x96>' }
 
   end

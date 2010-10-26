@@ -27,12 +27,10 @@ module AttachmentFx
   #
   # attachment_fu provided us with a has_attachment method
   #
-  # this here provides a has_attachment_file act method which declares a the caller
+  # this act provides a has_attachment_file method which declares a caller
   # (owner) to "have one" AttachmentFile (or it's subclass) association !
   #
   module ActMethods
-
-    #DEFAULT_CLASS_NAME = AttachmentFile.to_s
 
     # has_one :photo, :as => :owner, :class_name => 'User::Photo', :dependent => :destroy
     #  to
@@ -44,25 +42,26 @@ module AttachmentFx
         options[:conditions] = merge_conditions(current, "type = '#{clazz}'")
       else
         # try to auto-detect custom class name :
-        const_name = association_id.to_s.camelize # :photo -> 'Photo'
+        const_name = association_id.to_s.camelize # :photo -> Photo
         options[:class_name] =
-          if self.const_defined?(const_name) # User.const_defined? 'Photo'
-            "#{self}::#{const_name}" # User::Photo
-          elsif Object.const_defined?(const_name) # 'Photo'
+          if self.const_defined?(const_name) # User.const_defined? Photo
+            "#{self.name}::#{const_name}" # User::Photo
+          elsif Object.const_defined?(const_name) # Object.const_defined? Photo
             const_name # Photo
           else
             raise ":class_name not provided and could not auto-resolve " + 
                   "#{const_name} class constant in Object or #{self}"
           end
       end
-      
+
+      options[:inverse_of] = :owner # will only work with Rails 2.3.6+
       # do not keep orphan attachments by default :
       options[:dependent] = :destroy unless options.has_key?(:dependent)
 
       has_one association_id, options
 
-      module_name = AttachmentFx::Owner
-      include(module_name) unless include?(module_name)
+      mod = AttachmentFx::Owner
+      include(mod) unless include?(mod)
 
       write_inheritable_array(:attachment_attr_names, [ association_id.to_sym ])
 
@@ -81,8 +80,8 @@ module AttachmentFx
       }, __FILE__, __LINE__)
 
       if PATH_CACHE_ENABLED
-        module_name = AttachmentFx::Owner::PathCache
-        include(module_name) unless include?(module_name)
+        mod = AttachmentFx::Owner::PathCache
+        include(mod) unless include?(mod)
       end
     end
 

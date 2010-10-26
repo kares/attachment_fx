@@ -26,10 +26,10 @@ module AttachmentFx
       # :storage => :db_file,
       # :path_prefix => "public/attachment_files",
       # :thumbnail_class => AttachmentFile
-      # :owner => { :touch => true, :polymorphic => true }
+      # :owner => { :touch => false, :polymorphic => true }
       options[:touch] = false unless options.has_key?(:touch)
       options[:polymorphic] = true unless options.has_key?(:polymorphic)
-      
+
       base.belongs_to :owner, options
 
       ##
@@ -37,10 +37,10 @@ module AttachmentFx
 
         owner = if attachment.respond_to?(:proxy_owner)
           attachment.proxy_owner
-        elsif attachment.owner
-          attachment.owner # won't respond_to?
         else
-          nil
+          attachment.owner(false)
+        #else
+        #  nil
         end
 
         # unwrap ActiveRecord::Associations::BelongsToPolymorphicAssociation :
@@ -49,7 +49,7 @@ module AttachmentFx
         update_method = :update_attachment_path_cache
         if owner.respond_to?(update_method)
           attr_name =
-            if attachment.respond_to? :proxy_reflection
+            if attachment.respond_to?(:proxy_reflection)
               attachment.proxy_reflection.name
             else
               # find the attachment reflection name (has_one :image, :class_name => 'Image') :
@@ -66,7 +66,7 @@ module AttachmentFx
               end
               reflection_name
             end
-          #puts "callback: #{owner} #{attr_name.inspect} #{attachment}"
+          
           owner.send(update_method, attr_name, attachment)
         end
       end
@@ -174,7 +174,7 @@ module AttachmentFx
 
       # an extended version of has_attachment :
       # - adds "filename" support for :db_file storage
-      def has_attachment(options = {}) # TODO refactor too many has_attachment overrides !
+      def has_attachment(options = {}) # TODO too many has_attachment overrides !
         # if 'overriden' include what's already here
         super(attachment_options.merge(options))
         if attachment_options[:storage] == :db_file

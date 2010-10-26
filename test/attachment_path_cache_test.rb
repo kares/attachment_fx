@@ -141,11 +141,9 @@ class AttachmentPathCacheTest < ActiveSupport::TestCase
     owner = ImageOwnerWithPathCache.create!(:image => { :uploaded_data => file_data })
     owner = ImageOwnerWithPathCache.find(owner.id)
     assert_not_blank owner[:attachment_path_cache]
-    #puts "destoying image !"
     owner.image.destroy
-    #puts "destoying image owner #{owner} #{owner.attachment_path_cache.inspect}"
 
-    #assert_blank owner.image_path # NOTE works only after reload !
+    assert_blank owner.image_path # NOTE works only after reload for < 2.3.6
     assert_blank owner.reload.image_path
   end
 
@@ -158,7 +156,7 @@ class AttachmentPathCacheTest < ActiveSupport::TestCase
     assert owner.has_image?
 
     owner.image.destroy
-    #assert ! owner.has_image? # NOTE works only after reload !
+    assert ! owner.has_image? # NOTE works only after reload for < 2.3.6
     assert ! owner.reload.has_image?
   end
 

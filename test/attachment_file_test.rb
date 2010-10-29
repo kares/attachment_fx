@@ -354,7 +354,10 @@ class AttachmentFileTest < ActiveSupport::TestCase
 
     image_owner = ValidatedImageOwner.new(:image => { :uploaded_data => file_data })
     assert ! image_owner.save
-    assert image_owner.valid? # the image was invalid not the owner !
+
+    assert ! image_owner.valid? # the image was invalid not the owner !
+    assert ! image_owner.image.valid?
+    
     assert_nil image_owner.image.id
   end
 
@@ -363,7 +366,9 @@ class AttachmentFileTest < ActiveSupport::TestCase
     file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.png'
     assert ! image_owner.update_attributes(:name => 'mehehehe', :image => { :uploaded_data => file_data })
 
-    assert image_owner.valid? # the image was invalid not the owner !
+    assert ! image_owner.valid? # the image was invalid not the owner !
+    assert_not_blank image_owner.errors.on(:'image.uploaded_data')
+
     assert_equal 'mehehehe', image_owner.name
     assert_not_nil image_owner.image
     assert_not_blank image_owner.image.errors
@@ -381,7 +386,8 @@ class AttachmentFileTest < ActiveSupport::TestCase
     file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.png'
     assert ! image_owner.update_attributes(:name => 'mehehehe', :image => { :uploaded_data => file_data })
 
-    assert image_owner.valid? # the image was invalid not the owner !
+    assert ! image_owner.valid? # the image was invalid not the owner !
+    
     assert_equal 'mehehehe', image_owner.name
     assert_not_nil image_owner.image
     assert_nil image_owner.image.id
@@ -475,10 +481,38 @@ class AttachmentFileTest < ActiveSupport::TestCase
     image_owner = ValidatedImageOwner.new(:image => { :uploaded_data => file_data })
 
     assert ! image_owner.save
-    assert image_owner.errors.blank?
+    assert ! image_owner.errors.blank?
     assert ! image_owner.image.errors.blank?
     assert image_owner.image.errors.on(:uploaded_data)
   end
+
+#  class ::TouchedImage < AttachmentFile
+#
+#    has_attachment :storage => :db_file,
+#                   :content_type => :image,
+#                   :path_prefix => TEST_IMAGE_PATH_PREFIX,
+#
+#                   :owner => { :touch => true }
+#
+#  end
+#
+#  class ::TouchedImageOwner < ActiveRecord::Base
+#
+#    has_attachment_file :image, :class_name => 'TouchedImage'
+#
+#  end
+#
+#  test "touched image might be persisted" do
+#    file = File.join(TEST_FILES_PATH, 'attachment_file_test.jpg')
+#    image = TouchedImage.new_from_file(file)
+#    assert image.save, "save failed: #{image.errors.inspect}"
+#  end
+#
+#  test "touched image on save touches owner" do
+#    owner = TouchedImageOwner.create!
+#    updated_at = owner.reload.update_at
+#    sleep(1)
+#  end
 
   private
 

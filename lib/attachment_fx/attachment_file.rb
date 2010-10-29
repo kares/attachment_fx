@@ -27,7 +27,11 @@ module AttachmentFx
       # :path_prefix => "public/attachment_files",
       # :thumbnail_class => AttachmentFile
       # :owner => { :touch => false, :polymorphic => true }
-      options[:touch] = false unless options.has_key?(:touch)
+      #options[:touch] = false unless options.has_key?(:touch)
+      # NOTE: owner touch makes no sense + messes up save recursively !
+      if touch = options.delete(:touch)
+        RAILS_DEFAULT_LOGGER.info "#{base} :owner => { :touch => #{touch} } attachment option ignored !"
+      end
       options[:polymorphic] = true unless options.has_key?(:polymorphic)
 
       base.belongs_to :owner, options
@@ -88,17 +92,19 @@ module AttachmentFx
 
     #alias_method :thumbnail, :find_thumbnail
 
-    def save(perform_validation = true)
-      # need to fix attachment file saving, if called with
-      # save(false) it does not get saved correctly e.g. thumb-nails
-      # are not generated as some processing is hooked as
-      # validation call-backs ... thus fix this behavior :
-      unless perform_validation
-        self.valid?
-        self.errors.clear
-      end
-      super
-    end
+    # NOTE: no need to perform this anymore as we validate the associated file 
+    # by default with the owner ( has_attachment_file :validate => true ) !
+    #def save(perform_validation = true)
+    #  # need to fix attachment file saving, if called with
+    #  # save(false) it does not get saved correctly e.g. thumb-nails
+    #  # are not generated as some processing is hooked as
+    #  # validation call-backs ... thus fix this behavior :
+    #  unless perform_validation
+    #    self.valid?
+    #    self.errors.clear
+    #  end
+    #  super
+    #end
 
     # override to have a custom message for "invalid" content type e.g. image validation
     # for error message translations @see ActiveRecord::Error::generate_message
@@ -134,30 +140,21 @@ module AttachmentFx
     end
 
     def self.build_attachment(owner, name, attributes)
-      #RAILS_DEFAULT_LOGGER.debug "build_attachment(#{owner}, #{name}, #{attributes.inspect})"
       old_attachment = owner.send(name)
       unless old_attachment.nil?
         #owner.send("#{name}=", nil)
-        #RAILS_DEFAULT_LOGGER.debug "build_attachment() destroying old attachment ..."
         old_attachment.destroy
-        #RAILS_DEFAULT_LOGGER.debug "build_attachment() destroyed: #{old_attachment}"
       end
-      #RAILS_DEFAULT_LOGGER.debug "build_attachment() building new attachment ..."
       owner.send("build_#{name}", attributes)
     end
 
     def self.create_attachment(owner, name, attributes)
-      #RAILS_DEFAULT_LOGGER.debug "create_attachment(#{owner}, #{name}, #{attributes.inspect})"
       old_attachment = owner.send(name)
       owner.send("#{name}=", nil) # NOTE: this is important as RoR keeps some magick
       # in its association proxies and thus the destroy does not work correctly ...
-      #RAILS_DEFAULT_LOGGER.debug "create_attachment() creating new attachment ..."
       new_attachment = owner.send("create_#{name}", attributes)
-      #RAILS_DEFAULT_LOGGER.debug "create_attachment() created: #{new_attachment}"
       if new_attachment.id && ! old_attachment.nil?
-        #RAILS_DEFAULT_LOGGER.debug "create_attachment() destroying old attachment ..."
         old_attachment.destroy
-        #RAILS_DEFAULT_LOGGER.debug "create_attachment() destroyed: #{old_attachment}"
       end
       new_attachment
     end
@@ -174,13 +171,13 @@ module AttachmentFx
 
       # an extended version of has_attachment :
       # - adds "filename" support for :db_file storage
-      def has_attachment(options = {}) # TODO too many has_attachment overrides !
+      def has_attachment(options = {})
         # if 'overriden' include what's already here
         super(attachment_options.merge(options))
         if attachment_options[:storage] == :db_file
           require 'attachment_fx/db_file_helpers'
-          mod_name = AttachmentFx::DbFileHelpers
-          send :include, mod_name unless included_modules.include?(mod_name)
+          mod = AttachmentFx::DbFileHelpers
+          send :include, mod unless included_modules.include?(mod)
         end
       end
 
@@ -202,6 +199,7 @@ module AttachmentFx
       delegate :file_as_uploaded_data,
                :build_attachment,
                :create_attachment,
+               :content_type_for,
                :to => AttachmentFile
       
     end

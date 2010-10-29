@@ -36,7 +36,7 @@ module AttachmentFx
     #  to
     # has_attachment_file :photo
     def has_attachment_file(association_id, options = {})
-      options[:as] = :owner
+      options[:as] = :owner unless options.has_key?(:as)
       if options[:class_name]
         current, clazz = options[:conditions], options[:class_name]
         options[:conditions] = merge_conditions(current, "type = '#{clazz}'")
@@ -54,7 +54,10 @@ module AttachmentFx
           end
       end
 
-      options[:inverse_of] = :owner # will only work with Rails 2.3.6+
+      options[:autosave] = true unless options.has_key?(:autosave)
+      options[:validate] = true unless options.has_key?(:validate)
+      # this will only work with Rails 2.3.6+ :
+      options[:inverse_of] = :owner unless options.has_key?(:inverse_of)
       # do not keep orphan attachments by default :
       options[:dependent] = :destroy unless options.has_key?(:dependent)
 

@@ -152,12 +152,55 @@ class AttachmentPathCacheTest < ActiveSupport::TestCase
     image_data = AttachmentFile.file_as_uploaded_data(file)
     owner = ImageOwnerWithPathCache.create!
 
+    #ActiveRecord::Base.new.save
+
     assert owner.create_image(:uploaded_data => image_data)
     assert owner.has_image?
 
     owner.image.destroy
     assert ! owner.has_image? # NOTE works only after reload for < 2.3.6
     assert ! owner.reload.has_image?
+  end
+
+  test 'owner attachment_path_cache is correctly updated after adding and removing an attachment' do
+    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
+    owner = ImageOwnerWithPathCache.create!(:name => 'Ujo Jebo', :image => { :uploaded_data => file_data })
+    assert_equal 'Ujo Jebo', owner.name
+    assert_not_nil owner[:attachment_path_cache]
+    assert owner.has_image?
+    assert_not_nil owner.reload[:attachment_path_cache]
+
+    owner.image.destroy
+    assert_not_nil owner[:attachment_path_cache]
+    assert_blank owner.image_path
+    owner.reload
+    assert_blank owner.image_path
+
+    owner.update_attributes(:name => 'Stryko Jebo', :image => { :uploaded_data => file_data })
+    assert_equal 'Stryko Jebo', owner.name
+    assert_not_nil owner[:attachment_path_cache]
+    assert owner.has_image?
+    assert_not_nil owner.reload[:attachment_path_cache]
+    assert_not_blank owner.image_path
+  end
+
+  test 'owner attachment_path_cache is correctly updated after adding an attachment twice' do
+    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
+    owner = ImageOwnerWithPathCache.create!(:name => 'Ujo Jebo', :image => { :uploaded_data => file_data })
+    assert_equal 'Ujo Jebo', owner.name
+    assert_not_nil owner[:attachment_path_cache]
+    assert owner.has_image?
+    assert_not_nil owner.reload[:attachment_path_cache]
+
+    old_image = owner.image
+    
+    owner.update_attributes(:name => 'Stryko Jebo', :image => { :uploaded_data => file_data })
+    assert_equal 'Stryko Jebo', owner.name
+    assert_not_nil owner[:attachment_path_cache]
+    assert owner.has_image?
+    assert_not_equal old_image, owner.image
+    assert_not_nil owner.reload[:attachment_path_cache]
+    assert_not_blank owner.image_path
   end
 
   class ::Image2 < AttachmentFile

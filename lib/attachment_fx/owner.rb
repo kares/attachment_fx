@@ -29,7 +29,7 @@ module AttachmentFx
         invalid_attachments.blank? && super
       else
         # if updating an owner it's OK to update owner attributes
-        # but should report false if any attachment is invalid :
+        # but should report false if any attachments are invalid :
         super && invalid_attachments.blank?
       end
     end
@@ -71,12 +71,17 @@ module AttachmentFx
       end
 
       def set_attachment(name, attributes)
-        if new_record?
-          file = send :"build_#{name}", attributes
-          send :"set_#{name}_target", file
-        else
-          AttachmentFile.create_attachment(self, name, attributes) # TODO seems desired ?!
+        if attachment = send(name)
+          attachment.destroy unless attachment.new_record?
+          send("#{name}=", nil)
         end
+        send :"build_#{name}", attributes
+        #if new_record?
+        #  file = send :"build_#{name}", attributes
+        #  send :"set_#{name}_target", file
+        #else
+        #  AttachmentFile.create_attachment(self, name, attributes)
+        #end
       end
 
       def attachment_assigns(attributes)
@@ -119,17 +124,6 @@ module AttachmentFx
                                     "#{base} to cache attachment '*_path' methods"
         end
       end
-
-  #    def self.setup_cache_update(base, attachment_attr_name, attachment_class_name)
-  #      update_method = :update_attachment_path_cache
-  #      return unless base.instance_methods.include? update_method.to_s
-  #      update_cache_callback = Proc.new do |attachment|
-  #        attachment.owner.send(update_method, attachment_attr_name, attachment) if attachment.owner
-  #      end
-  #      attachment_class = attachment_class_name.constantize
-  #      attachment_class.send :after_attachment_saved, &update_cache_callback
-  #      attachment_class.send :after_destroy, &update_cache_callback
-  #    end
 
       # AttachmentFile::Owner overrides :
 

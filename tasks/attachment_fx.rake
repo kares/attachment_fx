@@ -1,7 +1,8 @@
 
 namespace :attachment_fx do
 
-  desc "Updates the attachment_path_cache for all models having an attachment"
+  desc "Updates the attachment_path_cache for all models having an attachment" +
+       " (use MODELS=User,Role to limit model classes)"
   task :update_path_cache => :environment do
     attachment_owner_classes do |owner_class|
       owner_instances = owner_class.all
@@ -12,7 +13,8 @@ namespace :attachment_fx do
     end
   end
 
-  desc "Updates the attachment_path_cache for all models having an attachment"
+  desc "Updates the attachment_path_cache for all models having an attachment" +
+       " (use MODELS=User,Role to limit model classes)"
   task :expire_path_cache => :environment do
     attachment_owner_classes do |owner_class|
       owner_instances = owner_class.all
@@ -23,14 +25,11 @@ namespace :attachment_fx do
     end
   end
 
-  # If we have command line arguments, they're assumed to be either the
-  # underscore or CamelCase versions of model names. Otherwise we take
-  # all the model files in the app/models directory.
+  # If we have command line argument MODELS=xxx they're assumed to be the model
+  # class names, otherwise we take all the model files under app/models dir ...
   def model_names
-    models = ARGV.dup
-    models.shift # attachment_fx:expire_path_cache
-    models.shift if models.first =~ /RAILS_ENV=.*/
-    if models.empty?
+    models = (ENV['MODELS'] || '').split(',')
+    if models.empty? && ! ENV['MODELS'] # all models :
       Dir.chdir(File.join(RAILS_ROOT, 'app/models')) do
         models = Dir["**/*.rb"]
       end
@@ -38,7 +37,7 @@ namespace :attachment_fx do
     models
   end
 
-  # Walk trhough/return all the attachment owner models.
+  # Walk through/return all the attachment owner models.
   def attachment_owner_classes
     model_names.each do |model_name|
       class_name = model_name.sub(/\.rb$/,'').camelize
@@ -47,7 +46,7 @@ namespace :attachment_fx do
           klass.const_get(part)
         end
         if klass < ActiveRecord::Base && ! klass.abstract_class? &&
-            klass.include?(AttachmentFx::Owner::PathCache)
+           klass.include?(AttachmentFx::Owner::PathCache)
           yield(klass)
         else
           #puts "skipping #{class_name}"

@@ -59,8 +59,7 @@ module AttachmentFx
               # find the attachment reflection name (has_one :image, :class_name => 'Image') :
               reflection_name = nil
               owner.class.reflections.each do |name, reflection|
-                if reflection.options && 
-                   reflection.options[:class_name] == attachment.class.name
+                if reflection.klass == attachment.class
                   reflection_name = name
                   break
                 end

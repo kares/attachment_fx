@@ -1,3 +1,5 @@
+require 'fileutils'
+require 'digest/sha2'
 
 module AttachmentFx
 
@@ -57,14 +59,47 @@ module AttachmentFx
 
       def absolute_filepath(thumbnail = nil)
         raise ActiveRecord::ActiveRecordError.new("not yet saved") if new_record?
-        file_system_path = (thumbnail ? thumbnail_class : self.class).path_prefix
-        filename = thumbnail_name_for(thumbnail)
-        File.join(RAILS_ROOT, file_system_path, *partitioned_path(filename))
+        #file_system_path = (thumbnail ? thumbnail_class : self.class).path_prefix
+        file_system_path = (thumbnail ? thumbnail_class : self.class).attachment_options[:path_prefix].to_s
+        File.join(RAILS_ROOT, file_system_path, *partitioned_path( thumbnail_name_for(thumbnail) ))
       end
 
-      def partitioned_path(*args) # the id is used in the full path of a file :
-        attachment_path_id = ((respond_to?(:parent_id) && parent_id) || id).to_i
-        ("%08d" % attachment_path_id).scan(/..../) + args
+      # Partitions the given path into an array of path components.
+      #
+      # For example, given an <tt>*args</tt> of ["foo", "bar"], it will return
+      # <tt>["0000", "0001", "foo", "bar"]</tt> (assuming that that id returns 1).
+      #
+      # If the id is not an integer, then path partitioning will be performed by
+      # hashing the string value of the id with SHA-512, and splitting the result
+      # into 4 components. If the id a 128-bit UUID (as set by :uuid_primary_key => true)
+      # then it will be split into 2 components.
+      #
+      # To turn this off entirely, set :partition => false.
+      def partitioned_path(*args)
+        if respond_to?(:attachment_options) && attachment_options[:partition] == false
+          args
+        elsif attachment_options[:uuid_primary_key]
+          # Primary key is a 128-bit UUID in hex format. Split it into 2 components.
+          path_id = attachment_path_id.to_s
+          component1 = path_id[0..15] || "-"
+          component2 = path_id[16..-1] || "-"
+          [component1, component2] + args
+        else
+          path_id = attachment_path_id
+          if path_id.is_a?(Integer)
+            # Primary key is an integer. Split it after padding it with 0.
+            ("%08d" % path_id).scan(/..../) + args
+          else
+            # Primary key is a String. Hash it, then split it into 4 components.
+            hash = Digest::SHA512.hexdigest(path_id.to_s)
+            [hash[0..31], hash[32..63], hash[64..95], hash[96..127]] + args
+          end
+        end
+      end
+
+      # The attachment ID used in the full path of a file
+      def attachment_path_id
+        ((respond_to?(:parent_id) && parent_id) || id) || 0
       end
 
   end

@@ -18,12 +18,13 @@ class AttachmentFileTest < ActiveSupport::TestCase
   load_schema! 'schema.rb'
   setup :clear_images_dir
 
-  class ::AttachmentFile < ActiveRecord::Base
+  class AttachmentFile < ActiveRecord::Base
+    set_table_name 'attachment_files'
     has_attachment :storage => :db_file,
                    :processor => :mini_magick
   end
 
-  class ::Image < AttachmentFile
+  class Image < AttachmentFile
 
     has_attachment :storage => :db_file,
                    :content_type => :image,
@@ -34,7 +35,8 @@ class AttachmentFileTest < ActiveSupport::TestCase
 
   end
 
-  class ::ImageOwner < ActiveRecord::Base
+  class ImageOwner < ActiveRecord::Base
+    set_table_name 'image_owners'
 
     has_attachment_file :image, :class_name => 'Image'
 
@@ -80,7 +82,7 @@ class AttachmentFileTest < ActiveSupport::TestCase
     end
   end
 
-  class ::OtherImage < AttachmentFile
+  class OtherImage < AttachmentFile
 
     class ThumbnailImage < AttachmentFile
 
@@ -114,7 +116,7 @@ class AttachmentFileTest < ActiveSupport::TestCase
     end
   end
 
-  class ::OtherImage2 < AttachmentFile
+  class OtherImage2 < AttachmentFile
 
     class ThumbnailImage < OtherImage2
     end
@@ -329,7 +331,7 @@ class AttachmentFileTest < ActiveSupport::TestCase
     assert_equal 'attachment_file_test2.jpg', File.basename(image_owner.image.full_filename)
   end
 
-  class ::ValidatedImage < AttachmentFile
+  class ValidatedImage < AttachmentFile
 
     has_attachment :storage => :db_file,
                    :content_type => :image,
@@ -343,7 +345,8 @@ class AttachmentFileTest < ActiveSupport::TestCase
 
   end
 
-  class ::ValidatedImageOwner < ActiveRecord::Base
+  class ValidatedImageOwner < ActiveRecord::Base
+    set_table_name 'validated_image_owners'
 
     has_attachment_file :image, :class_name => 'ValidatedImage'
 

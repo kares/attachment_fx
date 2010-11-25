@@ -18,22 +18,24 @@ class AttachmentPathCacheTest < ActiveSupport::TestCase
   load_schema! 'schema.rb'
   setup :clear_images_dir
 
-  class ::AttachmentFile < ActiveRecord::Base
+  class AttachmentFile < ActiveRecord::Base
+    set_table_name 'attachment_files'
+
     has_attachment :storage => :db_file,
                    :processor => :mini_magick
   end
 
-  class ::Image < AttachmentFile
+  class Image < AttachmentFile
 
     has_attachment :content_type => :image,
                    :path_prefix => TEST_IMAGE_PATH_PREFIX,
                    :resize_to => '192x192>', # resize to no wider than 192px
-                   :thumbnail_class => self, # store thumbnails with parent
+                   :thumbnail_class => self, # store thumb-nails with parent
                    :thumbnails => { :half => '96x96>' }
 
   end
 
-  class ::ImageOwnerWithPathCache < ActiveRecord::Base
+  class ImageOwnerWithPathCache < ActiveRecord::Base
 
     set_table_name 'image_owners_with_path_cache'
 
@@ -203,17 +205,18 @@ class AttachmentPathCacheTest < ActiveSupport::TestCase
     assert_not_blank owner.image_path
   end
 
-  class ::Image2 < AttachmentFile
-
-    has_attachment # TODO need to call even if no new option
-
-  end
-
-  class ::ImageOwnerWithPathCache2 < ActiveRecord::Base
+  class ImageOwnerWithPathCache2 < ActiveRecord::Base
 
     set_table_name 'image_owners_with_path_cache'
 
     has_attachment_file :image1, :class_name => 'Image'
+
+    class Image2 < AttachmentFile
+
+      has_attachment # TODO need to call even if no new option
+
+    end
+
     has_attachment_file :image2
 
   end

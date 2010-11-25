@@ -20,8 +20,6 @@ require 'attachment_fu_hook'
 
 module AttachmentFx
 
-  PATH_CACHE_ENABLED = true
-
   #
   # ActMethods for all ARs this is complementary to the AttachmentFu::ActMethods !
   #
@@ -54,6 +52,8 @@ module AttachmentFx
           end
       end
 
+      path_cache = options.has_key?(:path_cache) ? options.delete(:path_cache) : true
+
       options[:autosave] = true unless options.has_key?(:autosave)
       options[:validate] = true unless options.has_key?(:validate)
       # this will only work with Rails 2.3.6+ :
@@ -82,7 +82,7 @@ module AttachmentFx
         end
       }, __FILE__, __LINE__)
 
-      if PATH_CACHE_ENABLED
+      if path_cache
         mod = AttachmentFx::Owner::PathCache
         include(mod) unless include?(mod)
       end

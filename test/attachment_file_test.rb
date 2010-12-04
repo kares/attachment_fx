@@ -18,6 +18,44 @@ class AttachmentFileTest < ActiveSupport::TestCase
   load_schema! 'schema.rb'
   setup :clear_images_dir
 
+  begin
+    require 'mime/types'
+
+    test 'content_type resolves from MIME::Types if available' do
+      type = [ MIME::Type.from_array('some/xxx-mime', ['xxx']) ]
+      MIME::Types.expects(:type_for).with('dir/filename.xxx').returns(type)
+      assert_equal 'some/xxx-mime', AttachmentFile.content_type_for('dir/filename.xxx')
+    end
+
+    test 'correct content_type is returned with MIME::Types' do
+      assert_equal 'text/html', AttachmentFile.content_type_for('dir/filename.html')
+    end
+
+  rescue
+    puts "mime-types gem not available skipping related tests"
+  end
+
+  test 'content_type resolves from Rails built-in Mime::Type' do
+    begin
+      mime_const = Object.send(:remove_const, :MIME) if defined?(MIME::Types)
+      
+      Mime::Type.expects(:lookup_by_extension).with('jpg').returns('image/jpeg')
+      assert_equal 'image/jpeg', AttachmentFile.content_type_for('dir/filename.jpg')
+    ensure
+      Object.const_set(:MIME, mime_const) if mime_const
+    end
+  end
+
+  test 'correct content_type is returned with Mime::Type' do
+    begin
+      mime_const = Object.send(:remove_const, :MIME) if defined?(MIME::Types)
+
+      assert_equal 'text/html', AttachmentFile.content_type_for('dir/filename.html')
+    ensure
+      Object.const_set(:MIME, mime_const) if mime_const
+    end
+  end
+
   class AttachmentFile < ActiveRecord::Base
     set_table_name 'attachment_files'
     has_attachment :storage => :db_file,

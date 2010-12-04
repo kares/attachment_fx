@@ -149,8 +149,8 @@ module AttachmentFx
 
     def self.create_attachment(owner, name, attributes)
       old_attachment = owner.send(name)
-      owner.send("#{name}=", nil) # NOTE: this is important as RoR keeps some magick
-      # in its association proxies and thus the destroy does not work correctly ...
+      owner.send("#{name}=", nil) # this is important as RoR keeps some _magick_
+      # in its association proxies and thus the destroy won't work correctly ...
       new_attachment = owner.send("create_#{name}", attributes)
       if new_attachment.id && ! old_attachment.nil?
         old_attachment.destroy
@@ -159,11 +159,15 @@ module AttachmentFx
     end
 
     def self.content_type_for(fname)
-      require 'mime/types' unless defined? MIME::Types
-      content_type = MIME::Types.type_for(fname).first # [ MIME ]
+      if defined?(MIME::Types) # require 'mime/types' (mime-types gem)
+        content_type = MIME::Types.type_for(fname).first # [ MIME ]
+      else # fallback to Rails built-in Mime::Type
+        extname = File.extname(fname).downcase[1..-1]
+        content_type = Mime::Type.lookup_by_extension(extname)
+      end
       content_type = content_type.first if content_type.is_a?(Array)
       raise "unknown content type for '#{fname}'" unless content_type
-      content_type.to_s # MIME::Type.to_s
+      content_type.to_s # #<MIME::Type:...>.to_s OR #<Mime::Type:...>.to_s
     end
 
     module ClassMethods

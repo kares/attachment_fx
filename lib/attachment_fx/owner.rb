@@ -2,10 +2,10 @@
 require 'active_support/core_ext/module/attribute_accessors'
 
 module AttachmentFx
-  
+
   #
   # will get included into the attachment file "owner"
-  # 
+  #
   # each and every attachment file belongs_to an owner
   #
   module Owner
@@ -167,35 +167,47 @@ module AttachmentFx
 
       def attachment_full_path(name, thumb)
         return nil_path unless attachment?(name)
-        
+
         File.expand_path(attachment_path(name, thumb), AttachmentFx::PUBLIC_PATH)
+      end
+
+      def expire_attachment_path_cache
+        if respond_to? attachment_path_cache_attr_name
+          update_attachment_path_cache_attribute(nil, nil)
+        end
       end
 
       protected
 
         def update_attachment_path_cache(attr_name = nil, attachment = nil)
           if respond_to? cache_attr_name = attachment_path_cache_attr_name
-            path_cache = send cache_attr_name
+            path_cache = send(cache_attr_name)
             path_cache = {} unless path_cache
+            path_cache_changed = false
+
+            store_path_cache_value = Proc.new do |cache_hash, key, value|
+              path_cache_changed ||= ! cache_hash.has_key?(key) || cache_hash[key] != value
+              cache_hash[key] = value
+            end
 
             update_path_cache_for_attachment = Proc.new do |name, instance|
-              
-              #puts "update_attachment_path_cache() name = #{name} attachment = #{instance}"
-              #puts "update_attachment_path_cache() destroyed = #{instance.destroyed?}" if instance
-
               if instance.nil? || instance.destroyed?
-                path_cache[name.to_s] = nil
+                # path_cache[name.to_s] = nil :
+                store_path_cache_value.call(path_cache, name.to_s, nil)
               else # we're going to cache the public_filename :
                 unless name_cache = path_cache[name = name.to_s]
                   name_cache = path_cache[name] = {}
                 end
                 if thumb = instance[:thumbnail] # it's a thumbnail
-                  name_cache[thumb.to_s] = instance.public_filename
+                  # name_cache[thumb.to_s] = instance.public_filename :
+                  store_path_cache_value.call(name_cache, thumb.to_s, instance.public_filename)
                 else # it's the parent (might have thumb-nails) :
-                  name_cache[''] = instance.public_filename
+                  # name_cache[''] = instance.public_filename :
+                  store_path_cache_value.call(name_cache, '', instance.public_filename)
                   instance.thumbnails.each do |attachment_thumb|
                     thumb = attachment_thumb[:thumbnail].to_s # thumbnail name
-                    name_cache[thumb] = instance.public_filename(thumb.to_sym)
+                    # name_cache[thumb] = instance.public_filename(thumb.to_sym) :
+                    store_path_cache_value.call(name_cache, thumb, instance.public_filename(thumb.to_sym))
                   end if instance.thumbnailable?
                 end
               end
@@ -205,23 +217,13 @@ module AttachmentFx
               attach = attachment ? attachment : send(attr_name)
               update_path_cache_for_attachment.call(attr_name, attach)
             else # update all attachments :
-              self.class.attachment_attr_names.each do |_attr_name|
-                attach = send(_attr_name)
-                #if ! attach.nil? || attach.respond_to?(:public_filename)
-                update_path_cache_for_attachment.call(_attr_name, attach)
-                #end
+              self.class.attachment_attr_names.each do |attr_name|
+                attach = send(attr_name)
+                update_path_cache_for_attachment.call(attr_name, attach)
               end
             end
-
-            #puts "update_attachment_path_cache() path_cache = #{path_cache.inspect}"
-
-            update_attachment_path_cache_attribute(path_cache)
-          end
-        end
-
-        def expire_attachment_path_cache
-          if respond_to? attachment_path_cache_attr_name
-            update_attachment_path_cache_attribute(nil)
+            
+            update_attachment_path_cache_attribute(path_cache) if path_cache_changed
           end
         end
 
@@ -231,7 +233,7 @@ module AttachmentFx
           send("#{cache_attr_name}=", path_cache)
           if readonly?
             logger = respond_to?(:logger) ? self.logger : RAILS_DEFAULT_LOGGER
-            logger.warn "update_attachment_path_cache_attribute() not updating " +
+            logger.info "update_attachment_path_cache_attribute() not updating " +
                         "attachment path cache as #{self.inspect} is readonly !" if logger
           else
             save(false)

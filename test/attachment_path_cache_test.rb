@@ -154,8 +154,6 @@ class AttachmentPathCacheTest < ActiveSupport::TestCase
     image_data = AttachmentFile.file_as_uploaded_data(file)
     owner = ImageOwnerWithPathCache.create!
 
-    #ActiveRecord::Base.new.save
-
     assert owner.create_image(:uploaded_data => image_data)
     assert owner.has_image?
 
@@ -304,6 +302,30 @@ class AttachmentPathCacheTest < ActiveSupport::TestCase
 
     assert_equal image_path, owner.image_path
     assert ! owner.loaded_image?
+  end
+
+  test 'update_attachment_path_cache updates if path not yet cached' do
+    file_data1 = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
+    owner = ImageOwnerWithPathCache2.create! :image1 => { :uploaded_data => file_data1 }
+    # owner.expects(:update_attachment_path_cache_attribute).once :
+    update_attachment_path_cache_attribute = 0
+    def owner.update_attachment_path_cache_attribute(value)
+      @update_attachment_path_cache_attribute ||= 0
+      @update_attachment_path_cache_attribute += 1
+    end
+    owner.send(:update_attachment_path_cache)
+    assert_equal 1, owner.instance_variable_get(:@update_attachment_path_cache_attribute)
+  end
+
+  test 'update_attachment_path_cache does not update if path cached' do
+    file_data1 = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
+    owner = ImageOwnerWithPathCache2.create! :image1 => { :uploaded_data => file_data1 }
+    owner.send(:update_attachment_path_cache)
+    # owner.expects(:update_attachment_path_cache_attribute).never :
+    def owner.update_attachment_path_cache_attribute(value)
+      raise "update_attachment_path_cache_attribute() : not expected to be invoked !"
+    end
+    owner.send(:update_attachment_path_cache)
   end
 
   private

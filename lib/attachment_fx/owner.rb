@@ -173,7 +173,7 @@ module AttachmentFx
 
       def expire_attachment_path_cache
         if respond_to? attachment_path_cache_attr_name
-          update_attachment_path_cache_attribute(nil, nil)
+          update_attachment_path_cache_attribute(nil)
         end
       end
 

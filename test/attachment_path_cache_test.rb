@@ -308,7 +308,6 @@ class AttachmentPathCacheTest < ActiveSupport::TestCase
     file_data1 = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
     owner = ImageOwnerWithPathCache2.create! :image1 => { :uploaded_data => file_data1 }
     # owner.expects(:update_attachment_path_cache_attribute).once :
-    update_attachment_path_cache_attribute = 0
     def owner.update_attachment_path_cache_attribute(value)
       @update_attachment_path_cache_attribute ||= 0
       @update_attachment_path_cache_attribute += 1
@@ -326,6 +325,22 @@ class AttachmentPathCacheTest < ActiveSupport::TestCase
       raise "update_attachment_path_cache_attribute() : not expected to be invoked !"
     end
     owner.send(:update_attachment_path_cache)
+  end
+
+  test 'owner expire_attachment_path_cache sets and updates path cache to nil' do
+    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
+    owner = ImageOwnerWithPathCache.create!(:image => { :uploaded_data => file_data })
+    owner = ImageOwnerWithPathCache.find(owner.id)
+    image_path = owner.image_path
+    owner.reload
+    assert_not_nil owner.attachment_path_cache
+    assert owner.attachment_path_cache.has_key?('image')
+    assert_not_nil owner.attachment_path_cache['image']
+
+    owner.expire_attachment_path_cache
+    assert_nil owner.attachment_path_cache
+    owner.reload
+    assert_nil owner.attachment_path_cache
   end
 
   private

@@ -29,7 +29,6 @@ require 'rails/version'
 puts "emulating Rails.version = #{Rails::VERSION::STRING}"
 
 require 'active_support'
-require 'active_support/all'
 require 'active_support/test_case'
 require 'active_record'
 require 'active_record/base'
@@ -48,4 +47,40 @@ silence_warnings { RAILS_ROOT = File.expand_path(File.dirname(__FILE__)) } # sho
 silence_warnings { RAILS_DEFAULT_LOGGER = Logger.new("#{RAILS_ROOT}/test.log") }
 ActiveRecord::Base.logger = RAILS_DEFAULT_LOGGER
 
-#$LOAD_PATH.unshift File.join(File.dirname(__FILE__), '../lib')
+module Rails
+  class << self
+
+    def logger
+      RAILS_DEFAULT_LOGGER
+    end
+
+    def backtrace_cleaner
+      @@backtrace_cleaner ||= begin
+        require 'rails/gem_dependency' # backtrace_cleaner depends on this !
+        require 'rails/backtrace_cleaner'
+        Rails::BacktraceCleaner.new
+      end
+    end
+
+    def root
+      Pathname.new(RAILS_ROOT)
+    end
+
+    def env
+      @_env ||= ActiveSupport::StringInquirer.new(RAILS_ENV)
+    end
+
+    def version
+      VERSION::STRING
+    end
+
+    def public_path
+      @@public_path ||= self.root ? File.join(self.root, "public") : "public"
+    end
+
+    def public_path=(path)
+      @@public_path = path
+    end
+    
+  end
+end

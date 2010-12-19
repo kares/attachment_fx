@@ -3,7 +3,6 @@ require 'rubygems' rescue nil
 
 require 'logger'
 require 'test/unit'
-require 'mocha'
 
 # a minimal Rails ENV :
 require File.expand_path(File.join(File.dirname(__FILE__), 'rails_setup'))

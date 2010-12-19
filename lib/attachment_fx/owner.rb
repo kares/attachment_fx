@@ -111,32 +111,53 @@ module AttachmentFx
     #
     module PathCache
 
-      ATTACHMENT_PATH_CACHE_ATTR_NAME = :attachment_path_cache
+      # customizable in an initializer :
+      # 
+      #   AttachmentFx::Owner::PathCache::ATTR_NAME['User'] = :path_cache
+      #   AttachmentFx::Owner::PathCache::ATTR_NAME['Role'] = :attachment_paths
+      #
+      ATTR_NAME = {}
 
-      def self.attachment_path_cache_attr_name
-        ATTACHMENT_PATH_CACHE_ATTR_NAME
+      def self.attachment_path_cache_attr_name(clazz)
+        ATTR_NAME[clazz.to_s] || :attachment_path_cache
       end
 
       def self.included(base)
-        attr_name = attachment_path_cache_attr_name
-        if base.column_names.include?(attr_name.to_s) ||
-           base.instance_methods.include?(attr_name.to_s)
-          base.send :serialize, attr_name.to_sym
+        attr_name = attachment_path_cache_attr_name(base).to_s
+        if base.column_names.include?(attr_name)
+          base.send :serialize, attr_name
         else
-          RAILS_DEFAULT_LOGGER.info "consider adding a '#{attr_name}' column for " +
-                                    "#{base} to cache attachment '*_path' methods"
+          logger = defined?(Rails.logger) && Rails.logger
+          logger.info "consider adding a '#{attr_name}' column for #{base} " +
+                      "to cache attachment '*_path' methods" if logger
         end
+      end
+
+      @@host_id = false
+
+      def self.host_id
+        if @@host_id == false
+          require 'socket'
+          @@host_id = "#{Socket.gethostname}".freeze
+        end
+        @@host_id
+      end
+
+      # to disable caching per host call :
+      #
+      #   AttachmentFx::Owner::PathCache.host_id = nil
+      #
+      def self.host_id=(id)
+        @@host_id = id
       end
 
       # AttachmentFile::Owner overrides :
 
       def attachment?(name)
-        if respond_to? cache_attr_name = attachment_path_cache_attr_name
-          if path_cache = send(cache_attr_name)
-            name_s = name.to_s
-            if path_cache.has_key?(name_s)
-              return !! path_cache[name_s]
-            end
+        if path_cache = fetch_attachment_path_cache
+          name_s = name.to_s
+          if path_cache.has_key?(name_s)
+            return !! path_cache[name_s]
           end
         end
         super
@@ -145,10 +166,7 @@ module AttachmentFx
       def attachment_path(name, thumb)
         return nil_path unless attachment?(name)
 
-        if respond_to? cache_attr_name = attachment_path_cache_attr_name
-          path_cache = send cache_attr_name
-          path_cache = {} unless path_cache
-
+        if path_cache = fetch_attachment_path_cache
           name_s = name.to_s
           if path_cache.has_key?(name_s)
             name_cache = path_cache[name_s]
@@ -162,7 +180,7 @@ module AttachmentFx
 
           super.tap do |path|
             name_cache[thumb_s] = path
-            update_attachment_path_cache_attribute(path_cache)
+            store_attachment_path_cache(path_cache)
           end
         end
         super
@@ -170,22 +188,25 @@ module AttachmentFx
 
       def attachment_full_path(name, thumb)
         return nil_path unless attachment?(name)
-
         File.expand_path(attachment_path(name, thumb), AttachmentFx::PUBLIC_PATH)
       end
 
-      def expire_attachment_path_cache
-        if respond_to? attachment_path_cache_attr_name
-          update_attachment_path_cache_attribute(nil)
+      def expire_attachment_path_cache(all_hosts = false)
+        if all_hosts
+          if respond_to? attachment_path_cache_attr_name
+            update_attachment_path_cache_attribute(nil)
+          else
+            nil
+          end
+        else
+          store_attachment_path_cache(nil)
         end
       end
 
       protected
 
         def update_attachment_path_cache(attr_name = nil, attachment = nil)
-          if respond_to? cache_attr_name = attachment_path_cache_attr_name
-            path_cache = send(cache_attr_name)
-            path_cache = {} unless path_cache
+          if path_cache = fetch_attachment_path_cache
             path_cache_changed = false
 
             store_path_cache_value = Proc.new do |cache_hash, key, value|
@@ -226,27 +247,58 @@ module AttachmentFx
               end
             end
             
-            update_attachment_path_cache_attribute(path_cache) if path_cache_changed
-          end
-        end
-
-        def update_attachment_path_cache_attribute(path_cache)
-          cache_attr_name = attachment_path_cache_attr_name
-          # update_attribute(cache_attr_name, path_cache)
-          send("#{cache_attr_name}=", path_cache)
-          if readonly?
-            logger = respond_to?(:logger) ? self.logger : RAILS_DEFAULT_LOGGER
-            logger.info "update_attachment_path_cache_attribute() not updating " +
-                        "attachment path cache as #{self.inspect} is readonly !" if logger
-          else
-            save(false)
+            store_attachment_path_cache(path_cache) if path_cache_changed
           end
         end
 
       private
 
         def attachment_path_cache_attr_name
-          PathCache.attachment_path_cache_attr_name
+          PathCache.attachment_path_cache_attr_name(self.class)
+        end
+
+        def fetch_attachment_path_cache
+          attr_name = attachment_path_cache_attr_name
+          if respond_to?(attr_name)
+            raw_path_cache = send(attr_name)
+            raw_path_cache ||= {}
+            if host_id = PathCache.host_id
+              raw_path_cache[host_id] ||= {}
+            else
+              raw_path_cache
+            end
+          else
+            nil
+          end
+        end
+
+        def store_attachment_path_cache(path_cache)
+          attr_name = attachment_path_cache_attr_name
+          if respond_to?(attr_name)
+            if host_id = PathCache.host_id
+              raw_path_cache = send(attr_name)
+              raw_path_cache ||= {}
+              raw_path_cache[host_id] = path_cache
+            else
+              raw_path_cache = path_cache
+            end
+            update_attachment_path_cache_attribute(raw_path_cache)
+          else
+            nil
+          end
+        end
+
+        def update_attachment_path_cache_attribute(raw_path_cache)
+          cache_attr_name = attachment_path_cache_attr_name
+          send("#{cache_attr_name}=", raw_path_cache)
+          if readonly?
+            logger = respond_to?(:logger) ? self.logger : defined?(Rails.logger) && Rails.logger
+            logger.info "update_attachment_path_cache_attribute() not updating " +
+                        "attachment path cache as #{self.inspect} is readonly !" if logger
+            false
+          else
+            save(false)
+          end
         end
 
     end

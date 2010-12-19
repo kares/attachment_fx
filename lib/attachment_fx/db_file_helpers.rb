@@ -24,7 +24,9 @@ module AttachmentFx
       end
       filepath = absolute_filepath(thumbnail)
       unless File.exists?(filepath)
-        self_file = thumbnail ? find_thumbnail(thumbnail) : self
+        unless self_file = thumbnail ? find_thumbnail(thumbnail) : self
+          raise "couldn't find thumbnail #{thumbnail.inspect} for #{self.inspect}"
+        end
         temp_file = self_file.create_temp_file
         FileUtils.mkpath File.dirname(filepath)
         FileUtils.copy temp_file.path, filepath

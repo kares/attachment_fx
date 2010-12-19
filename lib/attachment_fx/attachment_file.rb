@@ -93,15 +93,13 @@ module AttachmentFx
     def find_thumbnail(thumbnail)
       thumbnail_class.find_by_thumbnail_and_parent_id(thumbnail.to_s, id)
     end
-    #alias_method :thumbnail, :find_thumbnail
 
-    # NOTE: no need to perform this anymore as we validate the associated file 
+    # NOTE: no need to perform this anymore as we validate the associated file
     # by default with the owner ( has_attachment_file :validate => true ) !
     #def save(perform_validation = true)
-    #  # need to fix attachment file saving, if called with
-    #  # save(false) it does not get saved correctly e.g. thumb-nails
-    #  # are not generated as some processing is hooked as
-    #  # validation call-backs ... thus fix this behavior :
+    #  # need to fix attachment file saving, if called with save(false) it does
+    #  # not get saved correctly e.g. thumb-nails are not generated as some
+    #  # processing is hooked as validation call-backs ...
     #  unless perform_validation
     #    self.valid?
     #    self.errors.clear

@@ -386,6 +386,8 @@ class AttachmentFileTest < ActiveSupport::TestCase
   class ValidatedImageOwner < ActiveRecord::Base
     set_table_name 'validated_image_owners'
 
+    validates_presence_of :name
+
     has_attachment_file :image, :class_name => 'ValidatedImage'
 
   end
@@ -403,7 +405,7 @@ class AttachmentFileTest < ActiveSupport::TestCase
   end
 
   test 'attachment does not get saved with owner on update if is not valid (too big)' do
-    image_owner = ValidatedImageOwner.create!
+    image_owner = ValidatedImageOwner.create! :name => 'huu'
     file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.png'
     assert ! image_owner.update_attributes(:name => 'mehehehe', :image => { :uploaded_data => file_data })
 
@@ -418,9 +420,48 @@ class AttachmentFileTest < ActiveSupport::TestCase
     assert_nil image_owner.image
   end
 
+  test 'invalid (not an image) attachment does get saved with owner if validations are disabled' do
+    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.pdf'
+
+    image_owner = ValidatedImageOwner.new(:name => nil, :image => { :uploaded_data => file_data })
+    assert image_owner.save(false)
+
+    assert image_owner.id
+    assert image_owner.image.id
+    assert_nil image_owner.image.find_thumbnail(:preview) # could not create thumbnail - not an image !
+  end
+
+  test 'invalid (too big) attachment does get saved with owner if validations are disabled 1' do
+    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.png'
+
+    image_owner = ValidatedImageOwner.new(:name => nil, :image => { :uploaded_data => file_data })
+    assert image_owner.save(false)
+    assert image_owner.errors.blank? # name wasn't validated
+    assert image_owner.image.errors.blank?
+
+    assert image_owner.id
+    assert image_owner.image.id
+    # the attachment is saved but since validations are disabled thumb-nails are safe to not be generated !
+    assert_nil image_owner.image.find_thumbnail(:preview)
+  end
+
+  test 'invalid (too big) attachment does get saved with owner if validations are disabled 2' do
+    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.png'
+
+    image_owner = ValidatedImageOwner.new(:name => 'valid', :image => { :uploaded_data => file_data })
+    assert image_owner.save(false)
+    assert image_owner.errors.blank?
+    assert image_owner.image.errors.blank?
+    
+    assert image_owner.id
+    assert image_owner.image.id
+    # the attachment is saved but since validations are disabled thumb-nails are safe to not be generated !
+    assert_nil image_owner.image.find_thumbnail(:preview)
+  end
+
   test 'previous attachment is kept if saving new attachment fails due to validation errors' do
     file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
-    image_owner = ValidatedImageOwner.create!(:image => { :uploaded_data => file_data })
+    image_owner = ValidatedImageOwner.create!(:name => 'huu', :image => { :uploaded_data => file_data })
     image_id = image_owner.image.id
     #assert ValidatedImage.exists?(image_id)
 
@@ -442,7 +483,7 @@ class AttachmentFileTest < ActiveSupport::TestCase
 
   test 'previous attachment is destroyed if saving a new valid attachment' do
     file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
-    image_owner = ValidatedImageOwner.create!(:image => { :uploaded_data => file_data })
+    image_owner = ValidatedImageOwner.create!(:name => 'huu', :image => { :uploaded_data => file_data })
     image_id = image_owner.image.id
     assert ValidatedImage.exists?(image_id)
 

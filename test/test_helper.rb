@@ -4,26 +4,16 @@ require 'rubygems' rescue nil
 require 'logger'
 require 'test/unit'
 require 'mocha'
-require 'active_support'
-require 'active_support/all'
-require 'active_support/test_case'
-require 'active_record'
-require 'active_record/base'
 
-require 'action_controller/mime_type'
-require 'action_controller/mime_types'
+# a minimal Rails ENV :
+require File.expand_path(File.join(File.dirname(__FILE__), 'rails_setup'))
 
-$LOAD_PATH << File.expand_path( File.dirname(__FILE__) + '/../lib' )
 SCHEMA_BASE = File.dirname(__FILE__)
 
-# attachment_fu setup :
-
-RAILS_ENV = 'test'
-RAILS_ROOT = File.expand_path(File.dirname(__FILE__)) # should be absolute !
-RAILS_DEFAULT_LOGGER = Logger.new("#{RAILS_ROOT}/test.log")
-ActiveRecord::Base.logger = RAILS_DEFAULT_LOGGER
+$LOAD_PATH << File.expand_path( File.dirname(__FILE__) + '/../lib' )
 $LOAD_PATH << File.expand_path( File.dirname(__FILE__) + '/attachment_fu/lib' )
 
+# setup attachment_fu as a _plugin_ :
 require 'geometry'
 require 'technoweenie/attachment_fu'
 require 'technoweenie/attachment_fu/backends/db_file_backend'
@@ -89,20 +79,4 @@ ActiveSupport::TestCase.class_eval do
       result
     end
 
-end
-
-# no ugly binary file content logs :
-if ActiveRecord::VERSION::MAJOR < 3
-  ActiveRecord::ConnectionAdapters::AbstractAdapter.class_eval do
-
-    def format_log_entry_with_blobs_trimmed(message, dump = nil)
-      dump = dump.gsub(/x'([^']+)'/) do |blob|
-        (blob.length > 32) ? "x'#{$1[0,32]}... (#{blob.length} bytes)'" : $0
-      end if dump
-      format_log_entry_without_blobs_trimmed(message, dump)
-    end
-
-    alias_method_chain :format_log_entry, :blobs_trimmed
-
-  end
 end

@@ -7,6 +7,8 @@ module AttachmentFx
 
   PUBLIC_PATH = if defined? ActionView::Helpers::AssetTagHelper::ASSETS_DIR
     ActionView::Helpers::AssetTagHelper::ASSETS_DIR
+  elsif defined? Rails.public_path
+    Rails.public_path
   else
     File.join(RAILS_ROOT, 'public')
   end

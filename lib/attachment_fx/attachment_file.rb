@@ -1,7 +1,7 @@
 #
-# Table name: attachment_files
+# Sample table rows for attachment_files :
 #
-#  id           :integer(4)      not null, primary key
+#  id           :integer(4)
 #  type         :string(255)
 #  parent_id    :integer(4)
 #  content_type :string(50)
@@ -14,6 +14,11 @@
 #  owner_type   :string(20)
 #  db_file_id   :integer(4)
 #
+
+begin
+  require 'mime/types' # gem 'mime-types'
+rescue LoadError
+end
 
 module AttachmentFx
   
@@ -88,7 +93,6 @@ module AttachmentFx
     def find_thumbnail(thumbnail)
       thumbnail_class.find_by_thumbnail_and_parent_id(thumbnail.to_s, id)
     end
-
     #alias_method :thumbnail, :find_thumbnail
 
     # NOTE: no need to perform this anymore as we validate the associated file 

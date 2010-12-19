@@ -111,8 +111,11 @@ module AttachmentFx
     #
     module PathCache
 
-      @@attachment_path_cache_attr_name = :attachment_path_cache
-      mattr_accessor :attachment_path_cache_attr_name
+      ATTACHMENT_PATH_CACHE_ATTR_NAME = :attachment_path_cache
+
+      def self.attachment_path_cache_attr_name
+        ATTACHMENT_PATH_CACHE_ATTR_NAME
+      end
 
       def self.included(base)
         attr_name = attachment_path_cache_attr_name
@@ -238,6 +241,12 @@ module AttachmentFx
           else
             save(false)
           end
+        end
+
+      private
+
+        def attachment_path_cache_attr_name
+          PathCache.attachment_path_cache_attr_name
         end
 
     end

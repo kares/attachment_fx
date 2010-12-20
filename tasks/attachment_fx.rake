@@ -77,13 +77,13 @@ namespace :attachment_fx do
   end
 
   def attachment_owner_classes_with_path_cache
-    attr_name = AttachmentFx::Owner::PathCache.attachment_path_cache_attr_name
+    path_cache = AttachmentFx::Owner::PathCache
     attachment_owner_classes do |klass|
-      if klass.include?(AttachmentFx::Owner::PathCache) &&
-       if klass.column_names.include?(attr_name.to_s) ||
-          klass.instance_methods.include?(attr_name.to_s)
-         yield(klass)
-       end
+      if klass.include?(path_cache)
+        attr_name = path_cache.attachment_path_cache_attr_name(klass)
+        if klass.column_names.include?(attr_name.to_s)
+          yield(klass)
+        end
       end
     end
   end

@@ -11,21 +11,27 @@ namespace :attachment_fx do
   end
 
   desc "Updates the attachment_path_cache for all models having an attachment" +
-       " (use MODELS=User,Role to limit model classes)"
+       " (use MODELS=User,Role to limit model classes; HOSTS to specify host ids)"
   task :expire_path_cache => :environment do
     attachment_owner_classes_with_path_cache do |owner_class|
       puts "expiring #{owner_class.count} #{owner_class} instances"
-      send_all(owner_class, :expire_attachment_path_cache)
+      send_all(owner_class, :expire_attachment_path_cache, hosts)
     end
   end
 
-  def send_all(klass, method)
+  def send_all(klass, method, *args)
     limit = (ENV['LIMIT'] || 1000).to_i
     left = klass.count; offset = 0
     while left > 0
       instances = klass.find(:all, :limit => limit, :offset => offset)
-      instances.each { |instance| instance.send method }
+      instances.each { |instance| instance.send(method, *args) }
       left -= limit; offset += limit
+    end
+  end
+
+  def hosts
+    if hosts = ENV['HOSTS']
+      hosts == 'all' ? :all : hosts.split(',')
     end
   end
 

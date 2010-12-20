@@ -293,12 +293,12 @@ module AttachmentPathCacheTestImpl
     file_data1 = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
     owner = ImageOwnerWithPathCache2.create! :image1 => { :uploaded_data => file_data1 }
     # owner.expects(:update_attachment_path_cache_attribute).once :
-    def owner.update_attachment_path_cache_attribute(value)
-      @update_attachment_path_cache_attribute ||= 0
-      @update_attachment_path_cache_attribute += 1
+    def owner.store_attachment_path_cache(value)
+      @store_attachment_path_cache ||= 0
+      @store_attachment_path_cache += 1
     end
     owner.send(:update_attachment_path_cache)
-    assert_equal 1, owner.instance_variable_get(:@update_attachment_path_cache_attribute)
+    assert_equal 1, owner.instance_variable_get(:@store_attachment_path_cache)
   end
 
   def test_update_attachment_path_cache_does_not_update_if_path_cached
@@ -306,8 +306,8 @@ module AttachmentPathCacheTestImpl
     owner = ImageOwnerWithPathCache2.create! :image1 => { :uploaded_data => file_data1 }
     owner.send(:update_attachment_path_cache)
     # owner.expects(:update_attachment_path_cache_attribute).never :
-    def owner.update_attachment_path_cache_attribute(value)
-      raise "update_attachment_path_cache_attribute() : not expected to be invoked !"
+    def owner.store_attachment_path_cache(value)
+      raise "store_attachment_path_cache : not expected to be invoked !"
     end
     owner.send(:update_attachment_path_cache)
   end

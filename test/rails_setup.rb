@@ -25,9 +25,6 @@ else
   gem 'rails'
 end
 
-require 'rails/version'
-puts "emulating Rails.version = #{Rails::VERSION::STRING}"
-
 require 'active_support'
 require 'active_support/test_case'
 require 'active_record'

@@ -80,9 +80,8 @@ We already have some (not just for testing) useful helpers :
 Resolving file content types for these helpers is based on passing the file
 extension to the *mime-types* gem, if the gem is not available it will fallback
 to the Rails built-in `Mime::Type` which is not primarily designed for resolving
-file types from their .ext but is
-[http://rails.lighthouseapp.com/projects/8994/tickets/578-mime-type-lookup_by_extesion-is-case-sensitive](usable)
-if it has been setup correctly (@see the *mime_types* initializer).
+file types from their .ext but is usable if it has been setup correctly
+(@see the *mime_types* initializer).
 
 As we're using `:storage => :db_file` one might expect all the nifty interface
 as if one used `:storage => :file_system` e.g. :
@@ -96,8 +95,7 @@ Files will be downloaded on-demand from the DB and stored based on the
 
 NOTE: If You're using the `:db_file` backed do not forget to set it up in Your
 migrations. Your meta-data table (in this example `attachment_files`) requires a
-`db_file_id` foreign key to the `db_files` storage table (@see *attachment_fu*'s
-[https://github.com/technoweenie/attachment_fu/wiki](documentation)).
+`db_file_id` foreign key to the `db_files` storage table (@see the [fu wiki](http://github.com/technoweenie/attachment_fu/wiki)).
 
 If You've setup Your `db_files` table data column as `:binary` and You're using
 **MySQL** You might run into a **64kB** limit (RoR `:binary` equals a simple DB
@@ -111,8 +109,7 @@ So in order to save bigger files one should use **LONGBLOB**, migrate with :
 
 This helper is a shortcut to declare a *has_one* association to the attachment.
 It does setup sensible defaults, owner methods and some lifecycle callbacks, It
-accepts all the options of
-[http://apidock.com/rails/ActiveRecord/Associations/ClassMethods/has_one](has_one).
+accepts all the options of [has_one](http://apidock.com/rails/ActiveRecord/Associations/ClassMethods/has_one).
 The `has_attachment_file :photo` example translates as follows :
 
     has_one :photo, :as => :owner, 
@@ -181,10 +178,10 @@ There are *rake* tasks for updating/expiring path caches in case needed :
 AttachmentFu
 ------------
 
-[http://github.com/technoweenie/attachment_fu](AttachmentFu)
+<http://github.com/technoweenie/attachment_fu>
 
 attachment_fu facilitates file uploads in Ruby on Rails.
 There are a few storage options for the actual file data, but the plugin always
 at a minimum stores metadata for each file in the database.
 
-[/LICENSE.attachment_fu](AttachmentFu LICENSE)
+[AttachmentFu LICENSE](LICENSE.attachment_fu)

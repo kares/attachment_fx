@@ -184,4 +184,4 @@ attachment_fu facilitates file uploads in Ruby on Rails.
 There are a few storage options for the actual file data, but the plugin always
 at a minimum stores metadata for each file in the database.
 
-[AttachmentFu LICENSE](LICENSE.attachment_fu)
+[AttachmentFu LICENSE](/kares/attachment_fx/blob/master/LICENSE.attachment_fu)

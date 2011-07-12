@@ -369,6 +369,29 @@ class AttachmentFileTest < ActiveSupport::TestCase
     assert_equal 'attachment_file_test2.jpg', File.basename(image_owner.image.full_filename)
   end
 
+  test 'attachment gets updated with owner when assigned and later saved (and old attachment is destroyed)' do
+    file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test.jpg'
+    image_owner = ImageOwner.create!(:image => { :uploaded_data => file_data }).reload
+    assert_not_nil image_owner.image
+    assert_equal 'attachment_file_test.jpg', File.basename(image_owner.image.full_filename)
+    assert Image.exists?(image_id = image_owner.image.id)
+
+    begin
+      FileUtils.cp 'test/files/attachment_file_test.jpg', 'test/files/attachment_file_test2.jpg'
+      file_data = AttachmentFile.file_as_uploaded_data 'test/files/attachment_file_test2.jpg'
+      image_owner.image = Image.new(:uploaded_data => file_data)
+    ensure
+      FileUtils.rm 'test/files/attachment_file_test2.jpg' rescue nil
+    end
+    
+    image_owner.save!
+    assert_not_nil image_owner.image
+    assert_not_nil image_owner.image.id
+    assert_not_equal image_id, image_owner.image.id
+    assert ! Image.exists?(image_id)
+    assert_equal 'attachment_file_test2.jpg', File.basename(image_owner.image.full_filename)
+  end
+  
   class ValidatedImage < AttachmentFile
 
     has_attachment :storage => :db_file,

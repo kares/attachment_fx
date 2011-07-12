@@ -37,7 +37,7 @@ else
   require 'action_controller/mime_type'
 end
 
-require 'active_support/core_ext/kernel/reporting'
+require 'active_support/core_ext'
 
 silence_warnings { RAILS_ENV = "test" }
 silence_warnings { RAILS_ROOT = File.expand_path(File.dirname(__FILE__)) } # should be absolute !

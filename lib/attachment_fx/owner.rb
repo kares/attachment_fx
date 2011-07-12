@@ -1,4 +1,3 @@
-
 require 'active_support/core_ext/module/attribute_accessors'
 
 module AttachmentFx
@@ -193,7 +192,7 @@ module AttachmentFx
 
       def expire_attachment_path_cache(hosts = nil)
         if hosts
-          return nil unless respond_to? attachment_path_cache_attr_name
+          return nil unless respond_to?(attachment_path_cache_attr_name)
           case hosts
             when :all
               store_attachment_path_cache(nil, false)
@@ -240,18 +239,22 @@ module AttachmentFx
                 end
               end
             end
-
+            
             if attr_name # single update :
               attach = attachment ? attachment : send(attr_name)
               update_path_cache_for_attachment.call(attr_name, attach)
             else # update all attachments :
-              self.class.attachment_attr_names.each do |attr_name|
-                attach = send(attr_name)
-                update_path_cache_for_attachment.call(attr_name, attach)
+              self.class.attachment_attr_names.each do |name|
+                attach = send(name)
+                update_path_cache_for_attachment.call(name, attach)
               end
             end
             
-            store_attachment_path_cache(path_cache) if path_cache_changed
+            if path_cache_changed
+              block_given? ? yield(path_cache) : store_attachment_path_cache(path_cache)
+            else
+              nil
+            end
           end
         end
 

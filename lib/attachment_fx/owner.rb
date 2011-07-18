@@ -70,17 +70,10 @@ module AttachmentFx
       end
 
       def set_attachment(name, attributes)
-        if attachment = send(name)
-          attachment.destroy unless attachment.new_record?
-          send("#{name}=", nil)
-        end
-        send :"build_#{name}", attributes
-        #if new_record?
-        #  file = send :"build_#{name}", attributes
-        #  send :"set_#{name}_target", file
-        #else
-        #  AttachmentFile.create_attachment(self, name, attributes)
-        #end
+        send("#{name}=", nil) if old_attachment = send(name)
+        new_attachment = send(:"build_#{name}", attributes)
+        old_attachment.destroy if old_attachment && ! old_attachment.new_record?
+        new_attachment
       end
 
       def attachment_assigns(attributes)
